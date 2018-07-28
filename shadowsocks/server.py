@@ -35,6 +35,7 @@ def main():
 
     daemon.daemon_exec(config)
 
+    # 支持多客户端
     if config['port_password']:
         if config['password']:
             logging.warn('warning: port_password should not be used with '
@@ -43,6 +44,7 @@ def main():
     else:
         config['port_password'] = {}
         server_port = config['server_port']
+        # 若发现有多用户配置：采用‘端口->密码’的映射方式。
         if type(server_port) == list:
             for a_server_port in server_port:
                 config['port_password'][a_server_port] = config['password']
@@ -63,6 +65,9 @@ def main():
     else:
         dns_resolver = asyncdns.DNSResolver(prefer_ipv6=config['prefer_ipv6'])
 
+    # 一个服务器端可以打开多个端口
+    # 对于每个端口，都要新建一个对应的处理器
+    # 同时从配置文件中删除对应的配置
     port_password = config['port_password']
     del config['port_password']
     for port, password in port_password.items():
@@ -71,12 +76,16 @@ def main():
         a_config['password'] = password
         logging.info("starting server at %s:%d" %
                      (a_config['server'], int(port)))
+        # 逐一加到tcp、udp列表
         tcp_servers.append(tcprelay.TCPRelay(a_config, dns_resolver, False))
         udp_servers.append(udprelay.UDPRelay(a_config, dns_resolver, False))
 
     def run_server():
         def child_handler(signum, _):
             logging.warn('received SIGQUIT, doing graceful shutting down..')
+            # 关闭所有的socket，lambda表达式一句话搞定
+            # map(function, sequence[, sequence, ...]) -> list
+            # Return a list of the results of applying the function to the items of the argument sequence(s). 
             list(map(lambda s: s.close(next_tick=True),
                      tcp_servers + udp_servers))
         signal.signal(getattr(signal, 'SIGQUIT', signal.SIGTERM),
@@ -89,6 +98,7 @@ def main():
         try:
             loop = eventloop.EventLoop()
             dns_resolver.add_to_loop(loop)
+            # 把所有的监听端口添加到事件循环loop中，lambda表达式一句话搞定
             list(map(lambda s: s.add_to_loop(loop), tcp_servers + udp_servers))
 
             daemon.set_user(config.get('user', None))
@@ -97,6 +107,12 @@ def main():
             shell.print_exception(e)
             sys.exit(1)
 
+    # Shadowsocks supports spawning child processes like nginx.
+    # You can use --workers to specify how many workers to use.
+    # This argument is only supported on Unix and ssserver.
+    # Currently UDP relay does not work well on multiple workers.
+    # 支持像nginx多进程，可以在config中指定worker的数量。仅在linux下生效。
+    # 目前的bug：worker设为大于1时，udp转发有可能工作不正常
     if int(config['workers']) > 1:
         if os.name == 'posix':
             children = []
