@@ -110,10 +110,12 @@ def print_shadowsocks():
     print('Shadowsocks %s' % version)
 
 
+# 查找配置文件，先在当前目录下查找，然后再上一层目录查找
 def find_config():
     config_path = 'config.json'
     if os.path.exists(config_path):
         return config_path
+    # __file__是当前文件的路径，合理使用可以提高程序判断位置的方便性
     config_path = os.path.join(os.path.dirname(__file__), '../', 'config.json')
     if os.path.exists(config_path):
         return config_path
@@ -210,7 +212,7 @@ def check_config(config, is_local):
     cryptor.try_cipher(config['password'], config['method'],
                        config['crypto_path'])
 
-
+# 获取config.json里面的参数，返回一个字典
 def get_config(is_local):
     global verbose
 
@@ -227,6 +229,9 @@ def get_config(is_local):
                     'libopenssl=', 'libmbedtls=', 'libsodium=', 'prefer-ipv6']
     try:
         config_path = find_config()
+        # getopt我猜是从系统接口获得当前的运行形参
+        # getopt这个函数 就是用来抽取 sys.argv 获得的用户输入来确定执行步骤。
+        # 注意：定义命令行参数时，要先定义带'-'选项的参数，再定义没有‘-’的参数
         optlist, args = getopt.getopt(sys.argv[1:], shortopts, longopts)
         # 首先查找是使用配置文件还是使用参数列表形式
         for key, value in optlist:
@@ -478,7 +483,7 @@ General options:
 Online help: <https://github.com/shadowsocks/shadowsocks>
 ''')
 
-
+# 逐个解析list为utf8，递归
 def _decode_list(data):
     rv = []
     for item in data:
@@ -491,7 +496,7 @@ def _decode_list(data):
         rv.append(item)
     return rv
 
-
+# 逐个解析dict为utf8，递归
 def _decode_dict(data):
     rv = {}
     for key, value in data.items():
