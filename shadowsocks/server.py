@@ -59,6 +59,7 @@ def main():
     tcp_servers = []
     udp_servers = []
 
+    # 创建一个dns解析对象
     if 'dns_server' in config:  # allow override settings in resolv.conf
         dns_resolver = asyncdns.DNSResolver(config['dns_server'],
                                             config['prefer_ipv6'])

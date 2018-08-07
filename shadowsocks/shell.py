@@ -228,6 +228,7 @@ def get_config(is_local):
     try:
         config_path = find_config()
         optlist, args = getopt.getopt(sys.argv[1:], shortopts, longopts)
+        # 首先查找是使用配置文件还是使用参数列表形式
         for key, value in optlist:
             if key == '-c':
                 config_path = value

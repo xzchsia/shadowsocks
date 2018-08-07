@@ -14,6 +14,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+'''
+处理Shadowsocks协议的加密解密
+'''
+
 from __future__ import absolute_import, division, print_function, \
     with_statement
 
@@ -50,16 +54,19 @@ cached_keys = {}
 def try_cipher(key, method=None, crypto_path=None):
     Cryptor(key, method, crypto_path)
 
-
+# 返回一个(key,iv)，先从cache中查找是否有key，没有的话生成一个并放入cache
 def EVP_BytesToKey(password, key_len, iv_len):
     # equivalent to OpenSSL's EVP_BytesToKey() with count 1
     # so that we make the same key and iv as nodejs version
+    # 生成一个名字，用作存储字典的关键词。便于索引
     cached_key = '%s-%d-%d' % (password, key_len, iv_len)
     r = cached_keys.get(cached_key, None)
+    # 缓存中存在key，直接return
     if r:
         return r
     m = []
     i = 0
+    # 多次join md5使得m变长
     while len(b''.join(m)) < (key_len + iv_len):
         md5 = hashlib.md5()
         data = password
@@ -71,6 +78,8 @@ def EVP_BytesToKey(password, key_len, iv_len):
     ms = b''.join(m)
     key = ms[:key_len]
     iv = ms[key_len:key_len + iv_len]
+    # 缓存key，cached_key在上面已经生成。
+    # 字典的key为cached_key，对应的value是tuple：(key,iv)
     cached_keys[cached_key] = (key, iv)
     return key, iv
 
@@ -112,8 +121,12 @@ class Cryptor(object):
     def iv_len(self):
         return len(self.cipher_iv)
 
+    # 参数op有什么用途：判断加密解密
+    # 返回值：对应加密方式的初始化函数
     def get_cipher(self, password, method, op, iv):
         password = common.to_bytes(password)
+        # m指向一种加密方式，是tuple。
+        # 举例：m=rc4-md5时候， m = (16, 16, create_cipher)
         m = self._method_info
         if m[METHOD_INFO_KEY_LEN] > 0:
             key, _ = EVP_BytesToKey(password,
@@ -125,10 +138,12 @@ class Cryptor(object):
         self.key = key
         iv = iv[:m[METHOD_INFO_IV_LEN]]
         if op == CIPHER_ENC_ENCRYPTION:
+            # 这是获取加密专用的iv，不能用于解密
             # this iv is for cipher not decipher
             self.cipher_iv = iv
         return m[METHOD_INFO_CRYPTO](method, key, iv, op, self.crypto_path)
 
+    # 返回加密后二进制流，包含明文iv+密文data
     def encrypt(self, buf):
         if len(buf) == 0:
             return buf
@@ -138,11 +153,13 @@ class Cryptor(object):
             self.iv_sent = True
             return self.cipher_iv + self.cipher.encrypt(buf)
 
+    # 返回解密后的数据，不含iv
     def decrypt(self, buf):
         if len(buf) == 0:
             return buf
         if self.decipher is None:
             decipher_iv_len = self._method_info[METHOD_INFO_IV_LEN]
+            # 从buf首部截取iv明文
             decipher_iv = buf[:decipher_iv_len]
             self.decipher_iv = decipher_iv
             self.decipher = self.get_cipher(
@@ -184,7 +201,9 @@ def decrypt_all(password, method, data, crypto_path=None):
     result.append(cipher.decrypt_once(data))
     return b''.join(result), key, iv
 
-
+# 加密解密同在一个函数
+# 使用随机IV进行加密，使用接收到的iv进行解密
+# 返回明文或者密文，首部不含iv
 def encrypt_all(password, method, data, crypto_path=None):
     result = []
     method = method.lower()

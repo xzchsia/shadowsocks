@@ -18,6 +18,11 @@
 # from ssloop
 # https://github.com/clowwindy/ssloop
 
+'''
+事件循环，在对应不同的操作系统使用select、poll、epoll、kequeue实现IO复用，
+将三种底层实现包装成一个类Eventloop
+'''
+
 from __future__ import absolute_import, division, print_function, \
     with_statement
 
@@ -36,12 +41,12 @@ from shadowsocks import shell
 __all__ = ['EventLoop', 'POLL_NULL', 'POLL_IN', 'POLL_OUT', 'POLL_ERR',
            'POLL_HUP', 'POLL_NVAL', 'EVENT_NAMES']
 
-POLL_NULL = 0x00
-POLL_IN = 0x01
-POLL_OUT = 0x04
-POLL_ERR = 0x08
-POLL_HUP = 0x10
-POLL_NVAL = 0x20
+POLL_NULL = 0x00    # NULL无效
+POLL_IN = 0x01    # 有数据可读
+POLL_OUT = 0x04    # 写数据不会导致阻塞
+POLL_ERR = 0x08    # 指定的文件描述符发生错误
+POLL_HUP = 0x10    # 指定的文件描述符挂起事件
+POLL_NVAL = 0x20    # 指定的文件描述符非法
 
 
 EVENT_NAMES = {
@@ -57,10 +62,11 @@ EVENT_NAMES = {
 TIMEOUT_PRECISION = 10
 
 
+# kqueue是FreeBSD系统下的用法，linux下没有
 class KqueueLoop(object):
 
     MAX_EVENTS = 1024
-
+    # 创建一个kqueue实例
     def __init__(self):
         self._kqueue = select.kqueue()
         self._fds = {}
@@ -85,6 +91,7 @@ class KqueueLoop(object):
                 results[fd] |= POLL_IN
             elif e.filter == select.KQ_FILTER_WRITE:
                 results[fd] |= POLL_OUT
+        # 最终返回某个fd是不是有POLL_IN/POLL_OUT，默认是POLL_NULL
         return results.items()
 
     def register(self, fd, mode):
@@ -142,7 +149,8 @@ class SelectLoop(object):
     def close(self):
         pass
 
-
+# 一个EventLoop包装了所有系统下的IO复用方法
+# 需要判断当前select包的属性hasattr()，也就是判断当前系统是win\linux\bsd
 class EventLoop(object):
     def __init__(self):
         if hasattr(select, 'epoll'):

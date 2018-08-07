@@ -29,8 +29,6 @@ import time
 # get & set is O(1), not O(n). thus we can support very large n
 # TODO: if timeout or QPS is too large, then this cache is not very efficient,
 #       as sweep() causes long pause
-
-
 class LRUCache(collections.MutableMapping):
     """This class is not thread safe"""
 
