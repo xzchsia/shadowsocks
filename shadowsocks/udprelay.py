@@ -17,12 +17,12 @@
 
 
 '''
-ÊµÏÖudpµÄ×ª´ï£¬ÓÃÓÚlocal¶Ë´¦ÀílocalºÍ ¿Í»§Æ÷¶ËµÄSOCKS5Ğ­ÒéÍ¨ĞÅ£¬ÓÃÓÚlocal¶ËºÍÔ¶³Ì¶ËShadowsocksĞ­ÒéµÄÍ¨ĞÅ£»ÓÃÓÚÔ¶³Ì¶ËÓëlocal¶ËShadowsocksĞ­ÒéµÄÍ¨ĞÅ£¬ÓÃÓÚÔ¶³Ì¶ËºÍdest¶Ë(destination)µÄÍ¨ĞÅ
+å®ç°udpçš„è½¬è¾¾ï¼Œç”¨äºlocalç«¯å¤„ç†localå’Œ å®¢æˆ·å™¨ç«¯çš„SOCKS5åè®®é€šä¿¡ï¼Œç”¨äºlocalç«¯å’Œè¿œç¨‹ç«¯Shadowsocksåè®®çš„é€šä¿¡ï¼›ç”¨äºè¿œç¨‹ç«¯ä¸localç«¯Shadowsocksåè®®çš„é€šä¿¡ï¼Œç”¨äºè¿œç¨‹ç«¯å’Œdestç«¯(destination)çš„é€šä¿¡
 '''
 
-# SOCKS5ÊÇ»ùÓÚUDPµÄ£¬ËùÒÔÓĞÕâ¸öUDPrelay£¬ÓÃÀ´·µ»Ø¸øbrowserµÄ±¨ÎÄ??
+# SOCKS5æ˜¯åŸºäºUDPçš„ï¼Œæ‰€ä»¥æœ‰è¿™ä¸ªUDPrelayï¼Œç”¨æ¥è¿”å›ç»™browserçš„æŠ¥æ–‡??
 # sock5: RFC 1928
-# SOCKS5ÓÃÓÚbrowserºÍproxyĞ­ÉÌÓÃ
+# SOCKS5ç”¨äºbrowserå’Œproxyåå•†ç”¨
 
 # SOCKS5 UDP Request
 # +----+------+------+----------+----------+----------+
@@ -38,7 +38,7 @@
 # | 2  |  1   |  1   | Variable |    2     | Variable |
 # +----+------+------+----------+----------+----------+
 
-# shadowsocksÓÃÓÚproxyºÍremoteÔ¶³Ì¹µÍ¨ÓÃ£¬ËùÒÔÒª¼ÓÃÜ
+# shadowsocksç”¨äºproxyå’Œremoteè¿œç¨‹æ²Ÿé€šç”¨ï¼Œæ‰€ä»¥è¦åŠ å¯†
 # shadowsocks UDP Request (before encrypted)
 # +------+----------+----------+----------+
 # | ATYP | DST.ADDR | DST.PORT |   DATA   |
@@ -95,7 +95,7 @@ class UDPRelay(object):
 
     def __init__(self, config, dns_resolver, is_local, stat_callback=None):
         self._config = config
-        # ±¾µØºÍÔ¶³Ì²ÉÓÃÍ¬Ò»·İconfigÎÄ¼ş£¬ËùÒÔÒªÇø·Ö
+        # æœ¬åœ°å’Œè¿œç¨‹é‡‡ç”¨åŒä¸€ä»½configæ–‡ä»¶ï¼Œæ‰€ä»¥è¦åŒºåˆ†
         if is_local:
             self._listen_addr = config['local_address']
             self._listen_port = config['local_port']
@@ -117,7 +117,7 @@ class UDPRelay(object):
         self._ota_enable = config.get('one_time_auth', False)
         self._ota_enable_session = self._ota_enable
         self._is_local = is_local
-        # Õâ¸ö×ÖµäÊÇlrucache£¬´æ·Åcallback¡£
+        # è¿™ä¸ªå­—å…¸æ˜¯lrucacheï¼Œå­˜æ”¾callbackã€‚
         self._cache = lru_cache.LRUCache(timeout=config['timeout'],
                                          close_callback=self._close_client)
         self._client_fd_to_server_addr = \
@@ -125,7 +125,8 @@ class UDPRelay(object):
         self._dns_cache = lru_cache.LRUCache(timeout=300)
         self._eventloop = None
         self._closed = False
-        # set¼¯ºÏ£¬ÓÃÓÚ´æ·Åfielno()£¬¼û_handle_server()·½·¨
+        
+        # seté›†åˆï¼Œç”¨äºå­˜æ”¾fielno()ï¼Œè§_handle_server()æ–¹æ³•
         self._sockets = set()
         self._forbidden_iplist = config.get('forbidden_ip')
         self._crypto_path = config['crypto_path']
@@ -161,12 +162,12 @@ class UDPRelay(object):
             # just an address
             pass
 
-    # ×÷ÎªserverµÄ´¦Àíº¯Êı£¬°üÀ¨¡¾±¾µØ¶ËÊÕµ½½ø³ÌµÄudp¡¿ºÍ¡¾·şÎñ¶ËÊÕµ½±¾µØ¶Ë·¢ËÍµÄ¼ÓÃÜudp¡¿
-    # ¶ÔÓÚlocal£¬µÃµ½µÄÊÇ±¾µØ¼àÌı1080µÄÊı¾İ£¬Òª¼ÓÃÜºóÏò·şÎñ¶Ë·¢
-    # ¶ÔÓÚ·şÎñ¶Ë£¬µÃµ½µÄÊÇ±¾µØ·¢ËÍµÄÒÑ¼ÓÃÜÊı¾İ£¬½âÃÜºóÏòdestÖ±½Ó·¢ËÍ
+    # ä½œä¸ºserverçš„å¤„ç†å‡½æ•°ï¼ŒåŒ…æ‹¬ã€æœ¬åœ°ç«¯æ”¶åˆ°è¿›ç¨‹çš„udpã€‘å’Œã€æœåŠ¡ç«¯æ”¶åˆ°æœ¬åœ°ç«¯å‘é€çš„åŠ å¯†udpã€‘
+    # å¯¹äºlocalï¼Œå¾—åˆ°çš„æ˜¯æœ¬åœ°ç›‘å¬1080çš„æ•°æ®ï¼Œè¦åŠ å¯†åå‘æœåŠ¡ç«¯å‘
+    # å¯¹äºæœåŠ¡ç«¯ï¼Œå¾—åˆ°çš„æ˜¯æœ¬åœ°å‘é€çš„å·²åŠ å¯†æ•°æ®ï¼Œè§£å¯†åå‘destç›´æ¥å‘é€
     def _handle_server(self):
         server = self._server_socket
-        # r_addrÊÇ·¢ËÍÕßµÄµØÖ·
+
         data, r_addr = server.recvfrom(BUF_SIZE)
         key = None
         iv = None
@@ -174,7 +175,8 @@ class UDPRelay(object):
             logging.debug('UDP handle_server: data is empty')
         if self._stat_callback:
             self._stat_callback(self._listen_port, len(data))
-		# Èô±¾µØ¶Ë´Ó¼àÌı1080¶Ë¿ÚÊÕµ½±¾»úÓ¦ÓÃ½ø³Ì£¨ÀıÈçchrome£©µÄÊı¾İ£¬½øĞĞÇĞ³ıheader
+		
+		# è‹¥æœ¬åœ°ç«¯ä»ç›‘å¬1080ç«¯å£æ”¶åˆ°æœ¬æœºåº”ç”¨è¿›ç¨‹ï¼ˆä¾‹å¦‚chromeï¼‰çš„æ•°æ®ï¼Œè¿›è¡Œåˆ‡é™¤header
         if self._is_local:
             if self._is_tunnel:
                 # add ss header to data
@@ -189,6 +191,7 @@ class UDPRelay(object):
                     return
                 else:
                     data = data[3:]
+		# å¦‚æœæ˜¯æœåŠ¡ç«¯æ”¶åˆ°æœ¬åœ°ç«¯å‘å‡ºçš„udpæ•°æ®ï¼Œå…ˆè¿›è¡Œè§£å¯†
         else:
             # decrypt data
             try:
@@ -201,7 +204,7 @@ class UDPRelay(object):
             if not data:
                 logging.debug('UDP handle_server: data is empty after decrypt')
                 return
-        # ´¦Àíheader
+        # å¤„ç†header
         header_result = parse_header(data)
         if header_result is None:
             return
@@ -209,10 +212,11 @@ class UDPRelay(object):
         logging.info("udp data to %s:%d from %s:%d"
                      % (dest_addr, dest_port, r_addr[0], r_addr[1]))
         if self._is_local:
+            # å¦‚æœæ˜¯localæ”¶åˆ°ï¼Œåˆ™server_addr server_portéƒ½æ˜¯è¿œç¨‹çš„
             server_addr, server_port = self._get_a_server()
         else:
-            # Èç¹ûÔ¶³ÌÊÕµ½£¬Ôò½«server_addrÕâĞ©¸Ä³Édest_addr dest_port£¬·½±ã²Ù×÷
-            # dest¾ÍÊÇ×îÖÕÄ¿±ê£¬ÀıÈç www.youtube.com:443
+            # å¦‚æœè¿œç¨‹æ”¶åˆ°ï¼Œåˆ™å°†server_addrè¿™äº›æ”¹æˆdest_addr dest_portï¼Œæ–¹ä¾¿æ“ä½œ
+            # destå°±æ˜¯æœ€ç»ˆç›®æ ‡ï¼Œä¾‹å¦‚ www.youtube.com:443
             server_addr, server_port = dest_addr, dest_port
             # spec https://shadowsocks.org/en/spec/one-time-auth.html
             self._ota_enable_session = addrtype & ADDRTYPE_AUTH
@@ -256,10 +260,10 @@ class UDPRelay(object):
             self._client_fd_to_server_addr[client.fileno()] = r_addr
 
             self._sockets.add(client.fileno())
-            # Ìí¼Ó½øEventloop£¬±êÖ¾ÉèÖÃÎª¿É¶Á
+            # æ·»åŠ è¿›Eventloopï¼Œæ ‡å¿—è®¾ç½®ä¸ºå¯è¯»
             self._eventloop.add(client, eventloop.POLL_IN, self)
 
-        # Èç¹ûÊÇlocal£¬ÒªÏòÔ¶³Ì·¢£¬Òª¹ıÇ½£¬ËùÒÔÒª¼ÓÃÜ
+        # å¦‚æœæ˜¯localï¼Œè¦å‘è¿œç¨‹å‘ï¼Œè¦è¿‡å¢™ï¼Œæ‰€ä»¥è¦åŠ å¯†
         if self._is_local:
             key, iv, m = cryptor.gen_key_iv(self._password, self._method)
             # spec https://shadowsocks.org/en/spec/one-time-auth.html
@@ -273,17 +277,17 @@ class UDPRelay(object):
                 return
             if not data:
                 return
-        # Èç¹ûÊÇÔ¶³Ì£¬ÒªÏòdest·¢ÇëÇó£¬ËùÒÔ°Ñ³ıÊı¾İµÄ²¿·Ö³ıÈ¥£¬¼´³ıÈ¥header¡£
+        # å¦‚æœæ˜¯è¿œç¨‹ï¼Œè¦å‘destå‘è¯·æ±‚ï¼Œæ‰€ä»¥æŠŠé™¤æ•°æ®çš„éƒ¨åˆ†é™¤å»ï¼Œå³é™¤å»headerã€‚
         else:
-            # dataÒÑ¾­ÔÚÉÏÃæ½øĞĞÊı¾İ½âÃÜÁË¡£²»ĞèÒªÏñlocalÒ»Ñù¼ÓÃÜ·¢ËÍ¡£
-            # dataÒÑ¾­±»ÇĞ³ıÍ·µÄ3¸ö×Ö½ÚÁË
+            # dataå·²ç»åœ¨ä¸Šé¢è¿›è¡Œæ•°æ®è§£å¯†äº†ã€‚ä¸éœ€è¦åƒlocalä¸€æ ·åŠ å¯†å‘é€ã€‚
+            # dataå·²ç»è¢«åˆ‡é™¤å¤´çš„3ä¸ªå­—èŠ‚äº†
             data = data[header_length:]
         if not data:
             return
         try:
-            # ·¢ËÍ£¬ÍêÃÀÎŞè¦¡£¡£¡£¡£
-            # Õâ¸ösendtoÍ¬Ê±ÓĞudpµÄºÍtcpµÄÁ½ÖÖ£¬sendtoº¯ÊıÖ÷ÒªÓÃÓÚUDP£¬µ«ÕâÀïÁ½ÖÖ¶¼ÓÃÁË
-            # µ÷ÓÃsendtoÊ±ºò»á×Ô¶¯¼ÓÉÏÄÇ¸öÊ×3¸ö×Ö½Ú£¬Ã²ËÆÊÇx00 x00 x00
+            # å‘é€ï¼Œå®Œç¾æ— ç‘•ã€‚ã€‚ã€‚ã€‚
+            # è¿™ä¸ªsendtoåŒæ—¶æœ‰udpçš„å’Œtcpçš„ä¸¤ç§ï¼Œsendtoå‡½æ•°ä¸»è¦ç”¨äºUDPï¼Œä½†è¿™é‡Œä¸¤ç§éƒ½ç”¨äº†
+            # è°ƒç”¨sendtoæ—¶å€™ä¼šè‡ªåŠ¨åŠ ä¸Šé‚£ä¸ªé¦–3ä¸ªå­—èŠ‚ï¼Œè²Œä¼¼æ˜¯x00 x00 x00
             client.sendto(data, (server_addr, server_port))
         except IOError as e:
             err = eventloop.errno_from_exception(e)
@@ -292,9 +296,9 @@ class UDPRelay(object):
             else:
                 shell.print_exception(e)
 
-    # ×÷ÎªlocalµÄ´¦Àíº¯Êı£¬°üÀ¨¡¾·şÎñ¶ËÊÕµ½dest£¨ÀıÈçyoutube£©·¢ËÍµÄudp¡¿ºÍ¡¾±¾µØ¶ËÊÕµ½·şÎñ¶Ë·¢À´µÄ¼ÓÃÜudp¡¿
-    # ¶ÔÓÚlocal£¬µÃµ½µÄÊÇÔ¶³ÌµÄÏàÓ¦£¬ÒªÍù¿Í»§¶Ë·¢
-    # ¶ÔÓÚÔ¶³Ì£¬µÃµ½µÄÊÇdestµÄÏìÓ¦£¬ÒªÍùlocal·¢
+    # ä½œä¸ºlocalçš„å¤„ç†å‡½æ•°ï¼ŒåŒ…æ‹¬ã€æœåŠ¡ç«¯æ”¶åˆ°destï¼ˆä¾‹å¦‚youtubeï¼‰å‘é€çš„udpã€‘å’Œã€æœ¬åœ°ç«¯æ”¶åˆ°æœåŠ¡ç«¯å‘æ¥çš„åŠ å¯†udpã€‘
+    # å¯¹äºlocalï¼Œå¾—åˆ°çš„æ˜¯è¿œç¨‹çš„ç›¸åº”ï¼Œè¦å¾€å®¢æˆ·ç«¯å‘
+    # å¯¹äºè¿œç¨‹ï¼Œå¾—åˆ°çš„æ˜¯destçš„å“åº”ï¼Œè¦å¾€localå‘
     def _handle_client(self, sock):
         data, r_addr = sock.recvfrom(BUF_SIZE)
         if not data:
@@ -304,12 +308,12 @@ class UDPRelay(object):
             self._stat_callback(self._listen_port, len(data))
         if not self._is_local:
             addrlen = len(r_addr[0])
-            # ÓòÃû¹æ·¶£ºÓòÃû²»ÄÜ³¬¹ı255¸ö×Ö·û¡£ÆäÖĞ¶¥¼¶ÓòÃû²»ÄÜ³¬¹ı63×Ö·û
+            # åŸŸåè§„èŒƒï¼šåŸŸåä¸èƒ½è¶…è¿‡255ä¸ªå­—ç¬¦ã€‚å…¶ä¸­é¡¶çº§åŸŸåä¸èƒ½è¶…è¿‡63å­—ç¬¦
             if addrlen > 255:
                 # drop
                 return
-            # pack_addr(r_addr[0])£º°Ñr_addr[0]´ò°ü³ÉshadowvpnµÄ×¨ÓÃµÄµØÖ·header£¬×·¼Óµ½r_addr[0]Í·²¿¡£
-            # struct.pack('>H', r_addr[1])£º´ò°ü³ÉBig-Endian¸ñÊ½
+            # pack_addr(r_addr[0])ï¼šæŠŠr_addr[0]æ‰“åŒ…æˆshadowvpnçš„ä¸“ç”¨çš„åœ°å€headerï¼Œè¿½åŠ åˆ°r_addr[0]å¤´éƒ¨ã€‚
+            # struct.pack('>H', r_addr[1])ï¼šæ‰“åŒ…æˆBig-Endianæ ¼å¼
             data = pack_addr(r_addr[0]) + struct.pack('>H', r_addr[1]) + data
             try:
                 response = cryptor.encrypt_all(self._password,
@@ -320,6 +324,7 @@ class UDPRelay(object):
                 return
             if not response:
                 return
+        # æœ¬åœ°ç«¯æ”¶åˆ°æœåŠ¡ç«¯å‘æ¥çš„åŠ å¯†udp
         else:
             try:
                 data, key, iv = cryptor.decrypt_all(self._password,
@@ -338,6 +343,8 @@ class UDPRelay(object):
                 # remove ss header
                 response = data[header_length:]
             else:
+				# addrtype, dest_addr, dest_port, header_length = header_result
+            	# è¿˜åŸä¸ºæ ‡å‡†çš„udpæ•°æ®æŠ¥æ ¼å¼ï¼ŒåŠ ä¸Šé¦–3ä¸ªå­—èŠ‚
                 response = b'\x00\x00\x00' + data
         client_addr = self._client_fd_to_server_addr.get(sock.fileno())
         if client_addr:
