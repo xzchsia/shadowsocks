@@ -120,6 +120,8 @@ class SelectLoop(object):
     def poll(self, timeout):
         r, w, x = select.select(self._r_list, self._w_list, self._x_list,
                                 timeout)
+        # defaultdict和lambda结合，可以为一个字典对象不存在的key自动给出一个默认的value，
+        # 即实现value为某个固定常量
         results = defaultdict(lambda: POLL_NULL)
         for p in [(r, POLL_IN), (w, POLL_OUT), (x, POLL_ERR)]:
             for fd in p[0]:
