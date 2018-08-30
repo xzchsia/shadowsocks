@@ -84,6 +84,8 @@ class KqueueLoop(object):
         if timeout < 0:
             timeout = None  # kqueue behaviour
         events = self._kqueue.control(None, KqueueLoop.MAX_EVENTS, timeout)
+        # defaultdict和lambda结合，可以为一个字典对象不存在的key自动给出一个默认的value，
+        # 即实现value为某个固定常量
         results = defaultdict(lambda: POLL_NULL)
         for e in events:
             fd = e.ident
@@ -126,6 +128,7 @@ class SelectLoop(object):
         for p in [(r, POLL_IN), (w, POLL_OUT), (x, POLL_ERR)]:
             for fd in p[0]:
                 results[fd] |= p[1]
+        # 最终返回某个fd是不是有POLL_IN/POLL_OUT，默认是POLL_NULL
         return results.items()
 
     def register(self, fd, mode):
